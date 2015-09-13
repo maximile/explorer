@@ -63,6 +63,16 @@ class Player(object):
         self.engine_sound = pyglet.media.load("sounds/engine.wav", streaming=False)
         self.land_sound = pyglet.media.load("sounds/land.wav", streaming=False)
         self.crash_sound = pyglet.media.load("sounds/crash.wav", streaming=False)
+        
+        # Thruster sprites
+        thruster_img = pyglet.image.load("images/thrusters.psd")
+        thruster_grid = pyglet.image.ImageGrid(thruster_img, 2, 4)
+        self.thruster_sprites = {}
+        cols_dirs = LEFT, UP, RIGHT, DOWN
+        for col, direction in enumerate(cols_dirs):
+            frames = thruster_grid[0, col], thruster_grid[1, col]
+            anim = pyglet.image.Animation.from_image_sequence(frames, 0.3, True)
+            self.thruster_sprites[direction] = pyglet.sprite.Sprite(anim)
     
     def can_land(self):
         return self.gear_state == GEAR_DOWN
@@ -76,7 +86,6 @@ class Player(object):
         self.landed = True
     
     def crash(self):
-        self.pos = 50.0, 50.0
         self.vel = 0.0, 0.0
         self.gear_state = GEAR_UP
         self.landed = False
@@ -151,3 +160,16 @@ class Player(object):
         sprite.x = self.pos[0]
         sprite.y = self.pos[1]
         sprite.draw()
+        
+        offsets = {UP: (self.width / 2 - 5, -14),
+                   DOWN: (self.width / 2 - 5, 12),
+                   LEFT: (27, self.height // 2 - 8),
+                   RIGHT: (-10, self.height // 2 - 8)}
+        for direction, value in self.inputs.items():
+            if not value:
+                continue
+            sprite = self.thruster_sprites[direction]
+            offset = offsets.get(direction, (20, 20))
+            sprite.x = self.pos[0] + offset[0]
+            sprite.y = self.pos[1] + offset[1]
+            sprite.draw()

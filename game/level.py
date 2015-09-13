@@ -13,7 +13,10 @@ def file_for_coords(x, y):
     levels_dir = "levels"
     names = os.listdir(levels_dir)
     for name in names:
-        test_x, test_y = [int(c) for c in name.split(".")[0].split(",")]
+        try:
+            test_x, test_y = [int(c) for c in name.split(".")[0].split(",")]
+        except ValueError:
+            continue
         if test_x == x and test_y == y:
             return os.path.join(levels_dir, name)
 
@@ -61,7 +64,7 @@ class Level(object):
                 g = ord(rgb_data[y * self.image.width * 3 + x * 3 + 1])
                 b = ord(rgb_data[y * self.image.width * 3 + x * 3 + 2])
                 if is_red(r, g, b):
-                    self.checkpoints.append((x, y))
+                    self.checkpoints.append((x, y))     
                 if is_green(r, g, b):
                     man_locs.append((x, y))
                 if bg_col is None:
@@ -131,14 +134,13 @@ class Level(object):
             while True:
                 # Sample below
                 x = the_man.pos[0] + the_man.width // 2
-                y = the_man.pos[1]
+                y = the_man.pos[1] - 1
                 if self._collision_mask[self.width * y + x]:
                     break
                 the_man.pos = the_man.pos[0], the_man.pos[1] - 1
                 if the_man.pos < 0:
                     raise RuntimeError("Too low!")
-                
-    
+
     def nearest_checkpoint(self, x, y):
         smallest_dist = 1000000.0
         closest = None

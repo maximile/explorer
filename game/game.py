@@ -1,19 +1,41 @@
 import os
 import pyglet
 
+import man
 import level
 import player
+
 
 class Game(object):
     def __init__(self):
         self.level = level.Level(0, 0)
         self.player = player.Player()
-        self.player.pos = self.level.nearest_checkpoint(0, 0)
+        self.player.pos = self.level.nearest_checkpoint(self.level.width // 2,
+                                                        self.level.height // 2)
+        self.rescue_sound = pyglet.media.load("sounds/rescue.wav", streaming=False)
         self.rescued_mans = {}
     
     def update(self, dt):
         self.player.update(dt)
         
+        # Move mans
+        for the_man in self.level.mans.values():
+            if the_man.direction == man.LEFT:
+                x = int(the_man.pos[0])
+                y = int(the_man.pos[1] - 1)
+                if x < 0 or not self.level.collision_mask[y * self.level.width + x]:
+                    the_man.direction = man.RIGHT
+            elif the_man.direction == man.RIGHT:
+                x = int(the_man.pos[0] + the_man.width)
+                y = int(the_man.pos[1] - 1)
+                if x > self.level.width or not self.level.collision_mask[y * self.level.width + x]:
+                    the_man.direction = man.LEFT
+            man_speed = 10.0
+            if the_man.direction == man.LEFT:
+                the_man.pos = the_man.pos[0] - man_speed * dt, the_man.pos[1]
+            else:
+                the_man.pos = the_man.pos[0] + man_speed * dt, the_man.pos[1]
+
         # Check for collision
         level_mask = self.level.collision_mask
         player_mask = self.player.collision_mask
@@ -46,6 +68,7 @@ class Game(object):
             self.player.land()
         elif other_collisions or bottom_row_collisions:
             self.player.crash()
+            self.player.pos = self.level.nearest_checkpoint(*self.player.pos)
         
         # Mans to rescue?
         for key, the_man in self.level.mans.items():
@@ -55,6 +78,7 @@ class Game(object):
                     (the_man.pos[1] - door_pos[1]) ** 2) ** 0.5
             if dist < 5:
                 del self.level.mans[key]
+                self.rescue_sound.play()
                 rescued = self.rescued_mans.setdefault(self.level.coords, [])
                 rescued.append(key)
             
