@@ -5,10 +5,10 @@ import fbo
 
 class GameWindow(pyglet.window.Window):
     def __init__(self, game):
-        super(GameWindow, self).__init__(resizable=True)
+        w = game.level.width * 2
+        h = game.level.height * 2
+        super(GameWindow, self).__init__(w, h, resizable=True)
         self.game = game
-        self.set_size(self.game.level.image.width * 2,
-                      self.game.level.image.height * 2)
     
     def on_key_press(self, symbol, modifiers):
         self.game.key_pressed(symbol, modifiers)

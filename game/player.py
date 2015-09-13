@@ -10,16 +10,21 @@ FACING_LEFT = "FACING_LEFT"
 FACING_RIGHT = "FACING_RIGHT"
 GEAR_DOWN = "GEAR_DOWN"
 GEAR_UP = "GEAR_UP"
-
+BLACK = "BLACK"
+WHITE = "WHITE"
 
 class Player(object):
     def __init__(self):
         # Images and collision masks:
         image_paths_for_states = {
-            (FACING_RIGHT, GEAR_UP): "images/car_right_up.png",
-            (FACING_RIGHT, GEAR_DOWN): "images/car_right_down.png",
-            (FACING_LEFT, GEAR_UP): "images/car_left_up.png",
-            (FACING_LEFT, GEAR_DOWN): "images/car_left_down.png"
+            (FACING_RIGHT, GEAR_UP, BLACK): "images/car_right_up.png",
+            (FACING_RIGHT, GEAR_DOWN, BLACK): "images/car_right_down.png",
+            (FACING_LEFT, GEAR_UP, BLACK): "images/car_left_up.png",
+            (FACING_LEFT, GEAR_DOWN, BLACK): "images/car_left_down.png",
+            (FACING_RIGHT, GEAR_UP, WHITE): "images/car_right_up_white.png",
+            (FACING_RIGHT, GEAR_DOWN, WHITE): "images/car_right_down_white.png",
+            (FACING_LEFT, GEAR_UP, WHITE): "images/car_left_up_white.png",
+            (FACING_LEFT, GEAR_DOWN, WHITE): "images/car_left_down_white.png"
         }
         
         self._sprites = {}
@@ -27,6 +32,7 @@ class Player(object):
         self.width = None
         self.height = None
         self.landed = False
+        self.color = BLACK
         for state, image_path in image_paths_for_states.items():
             # Sprite:
             image = pyglet.image.load(image_path)
@@ -89,7 +95,7 @@ class Player(object):
     
     @property
     def collision_mask(self):
-        state = self.facing, self.gear_state
+        state = self.facing, self.gear_state, self.color
         return self._collision_masks[state]
     
     def update(self, dt):
@@ -140,7 +146,7 @@ class Player(object):
         self.inputs[direction] = False
     
     def draw(self):
-        state = self.facing, self.gear_state
+        state = self.facing, self.gear_state, self.color
         sprite = self._sprites[state]
         sprite.x = self.pos[0]
         sprite.y = self.pos[1]
