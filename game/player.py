@@ -71,6 +71,7 @@ class Player(object):
     
     def crash(self):
         self.pos = 50.0, 50.0
+        self.vel = 0.0, 0.0
         self.gear_state = GEAR_UP
         self.landed = False
         self.crash_sound.play()

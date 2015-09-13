@@ -7,8 +7,10 @@ import player
 
 class Game(object):
     def __init__(self):
-        self.level = level.Level("images/test.png")
+        self.level = level.Level("images/tetris.psd")
         self.player = player.Player()
+        print self.level.nearest_checkpoint(0, 0)
+        self.player.pos = self.level.nearest_checkpoint(0, 0)
     
     def update(self, dt):
         self.player.update(dt)
