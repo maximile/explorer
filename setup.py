@@ -12,7 +12,7 @@ DATA_FILES = []
 OPTIONS = {'argv_emulation': True}
 
 # Get data files
-for folder in "images", "sounds":
+for folder in "images", "sounds", "levels":
     files = [os.path.join(folder, name) for name in os.listdir(folder)]
     DATA_FILES.append((folder, files))
 

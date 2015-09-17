@@ -64,15 +64,15 @@ class Level(object):
                 g = ord(rgb_data[y * self.image.width * 3 + x * 3 + 1])
                 b = ord(rgb_data[y * self.image.width * 3 + x * 3 + 2])
                 if is_red(r, g, b):
-                    self.checkpoints.append((x, y))     
+                    self.checkpoints.append((x, y))
+                    if bg_col is None:
+                        g = ord(rgb_data[y * self.image.width * 3 + (x - 1) * 3 + 1])
+                        if g < 127:
+                            bg_col = 0, 0, 0
+                        else:
+                            bg_col = 255, 255, 255
                 if is_green(r, g, b):
                     man_locs.append((x, y))
-                if bg_col is None:
-                    g = ord(rgb_data[y * self.image.width * 3 + (x - 1) * 3 + 1])
-                    if g < 127:
-                        bg_col = 0, 0, 0
-                    else:
-                        bg_col = 255, 255, 255
         self.bg_col = bg_col
         
         if not self.checkpoints:

@@ -121,7 +121,7 @@ class Game(object):
         elif direction == level.TOP:
             coords = self.level.coords[0], self.level.coords[1] + 1
         elif direction == level.BOTTOM:
-            coords = self.level.coords[0], self.evel.coords[1] - 1
+            coords = self.level.coords[0], self.level.coords[1] - 1
             
         self.level = level.Level(coords[0], coords[1],
                                  rescued_mans=self.rescued_mans.get(coords, []))
