@@ -109,7 +109,6 @@ class Game(object):
                 if level_y < 0 or level_y >= self.level.height:
                     continue
                 level_val = level_mask[level_y * self.level.width + level_x]
-                # print level_val, player_val
                 if level_val and player_val:
                     if y == 0:
                         bottom_row_collisions += 1
@@ -214,19 +213,10 @@ class Game(object):
         self.player.draw()
         
         if self.fade_amount > 0.0:
-            print self.fade_amount
             fade_index = int(self.fade_amount * len(self.fade_images))
             fade_index = min(fade_index, len(self.fade_images) - 1)
-            print fade_index
             fade_image = self.fade_images[fade_index]
-            
-            # batch = pyglet.graphics.Batch()
-            # for x in range(0, self.level.width, fade_image.width):
-            #     for y in range(0, self.level.height, fade_image.height):
-            #         sprite = pyglet.sprite.Sprite(fade_image, batch=batch)
-            #         sprite.x, sprite.y = x, y
-            # batch.draw()
-            
+                        
             verts = [(0.0, 0.0),
                      (self.level.width, 0.0),
                      (self.level.width, self.level.height),
