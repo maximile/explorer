@@ -1,9 +1,15 @@
+from __future__ import division
 import os
 import pyglet
 
 import man
 import level
 import player
+
+PLAYING = "PLAYING"
+FADE_OUT = "FADE_OUT"
+FADE_IN = "FADE_IN"
+WARPING = "WARPING"
 
 
 class Game(object):
@@ -14,8 +20,55 @@ class Game(object):
                                                         self.level.height // 2)
         self.rescue_sound = pyglet.media.load("sounds/rescue.wav", streaming=False)
         self.rescued_mans = {}
+        self.fade_amount = 1.0
+        self.state = FADE_IN
+        
+        fade_image = pyglet.image.load("images/fade.png")
+        self.fade_images = pyglet.image.ImageGrid(fade_image, 1, 38)
     
     def update(self, dt):
+        dt = min(dt, 1.0 / 30.0)
+        fade_speed = 1.6
+        
+        if self.state == PLAYING:
+            self.update_playing(dt)
+        elif self.state == FADE_OUT:
+            self.fade_amount += fade_speed * dt
+            if self.fade_amount >= 1.0:
+                self.fade_amount = 1.0
+                self.state = WARPING
+        elif self.state == FADE_IN:
+            self.fade_amount -= fade_speed * dt
+            if self.fade_amount <= 0.0:
+                self.fade_amount = 0.0
+                self.state = PLAYING
+        elif self.state == WARPING:
+            self.set_level(**self.next_level_args)
+            self.state = FADE_IN
+    
+    def set_level(self, coords, direction):
+        self.level = level.Level(coords[0], coords[1],
+                                 rescued_mans=self.rescued_mans.get(coords, []))
+        
+        if direction == level.LEFT:
+            self.player.pos = self.level.nearest_checkpoint(self.level.width,
+                                                            self.player.pos[1])
+        elif direction == level.RIGHT:
+            self.player.pos = self.level.nearest_checkpoint(0,
+                                                            self.player.pos[1])
+        elif direction == level.TOP:
+            self.player.pos = self.level.nearest_checkpoint(self.player.pos[0],
+                                                            0)
+        elif direction == level.BOTTOM:
+            self.player.pos = self.level.nearest_checkpoint(self.player.pos[0],
+                                                            self.level.height)
+        
+        if self.level.bg_col == (0, 0, 0):
+            self.player.color = player.WHITE
+        else:
+            self.player.color = player.BLACK
+    
+    def update_playing(self, dt):
         self.player.update(dt)
         
         # Move mans
@@ -122,27 +175,9 @@ class Game(object):
             coords = self.level.coords[0], self.level.coords[1] + 1
         elif direction == level.BOTTOM:
             coords = self.level.coords[0], self.level.coords[1] - 1
-            
-        self.level = level.Level(coords[0], coords[1],
-                                 rescued_mans=self.rescued_mans.get(coords, []))
         
-        if direction == level.LEFT:
-            self.player.pos = self.level.nearest_checkpoint(self.level.width,
-                                                            self.player.pos[1])
-        elif direction == level.RIGHT:
-            self.player.pos = self.level.nearest_checkpoint(0,
-                                                            self.player.pos[1])
-        elif direction == level.TOP:
-            self.player.pos = self.level.nearest_checkpoint(self.player.pos[0],
-                                                            0)
-        elif direction == level.BOTTOM:
-            self.player.pos = self.level.nearest_checkpoint(self.player.pos[0],
-                                                            self.level.height)
-        
-        if self.level.bg_col == (0, 0, 0):
-            self.player.color = player.WHITE
-        else:
-            self.player.color = player.BLACK
+        self.next_level_args = {"coords": coords, "direction": direction}
+        self.state = FADE_OUT
     
     def key_pressed(self, symbol, modifiers):
         # Quit:
@@ -177,3 +212,40 @@ class Game(object):
     def draw(self):
         self.level.draw()
         self.player.draw()
+        
+        if self.fade_amount > 0.0:
+            print self.fade_amount
+            fade_index = int(self.fade_amount * len(self.fade_images))
+            fade_index = min(fade_index, len(self.fade_images) - 1)
+            print fade_index
+            fade_image = self.fade_images[fade_index]
+            
+            # batch = pyglet.graphics.Batch()
+            # for x in range(0, self.level.width, fade_image.width):
+            #     for y in range(0, self.level.height, fade_image.height):
+            #         sprite = pyglet.sprite.Sprite(fade_image, batch=batch)
+            #         sprite.x, sprite.y = x, y
+            # batch.draw()
+            
+            verts = [(0.0, 0.0),
+                     (self.level.width, 0.0),
+                     (self.level.width, self.level.height),
+                     (0.0, self.level.height)]
+            tex_coords = [(0.0, 0.0),
+                          (self.level.width / fade_image.width, 0.0),
+                          (self.level.width / fade_image.width,
+                           self.level.height / fade_image.height),
+                          (0.0, self.level.height / fade_image.height)]
+        
+            pyglet.gl.glEnable(pyglet.gl.GL_TEXTURE_2D)
+            pyglet.gl.glEnable(pyglet.gl.GL_BLEND)
+            pyglet.gl.glBlendFunc(pyglet.gl.GL_SRC_ALPHA,
+                                  pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)
+            pyglet.gl.glBindTexture(pyglet.gl.GL_TEXTURE_2D,
+                                    fade_image.get_texture().id)
+            pyglet.gl.glBegin(pyglet.gl.GL_QUADS)
+            for vc, tc in zip(verts, tex_coords):
+                pyglet.gl.glTexCoord2f(*tc)
+                pyglet.gl.glVertex2f(*vc)
+            pyglet.gl.glEnd()
+            pyglet.gl.glDisable(pyglet.gl.GL_TEXTURE_2D)
