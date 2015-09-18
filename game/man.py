@@ -13,8 +13,8 @@ class Man(object):
         self.pos = 0, 0
         self.direction = random.choice([LEFT, RIGHT])
 
-        paths_for_colors = {BLACK: "images/man_black.psd",
-                            WHITE: "images/man_white.psd"}
+        paths_for_colors = {BLACK: "images/man_black.png",
+                            WHITE: "images/man_white.png"}
         self.sprites = {}
         for color, path in paths_for_colors.items():
             image = pyglet.image.load(path)

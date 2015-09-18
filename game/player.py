@@ -66,8 +66,8 @@ class Player(object):
         
         # Thruster sprites
         self.thruster_sprites = {}
-        paths_for_cols = {WHITE: "images/thrusters_white.psd",
-                          BLACK: "images/thrusters.psd"}
+        paths_for_cols = {WHITE: "images/thrusters_white.png",
+                          BLACK: "images/thrusters.png"}
         for color, path in paths_for_cols.items():
             self.thruster_sprites[color] = {}
             thruster_img = pyglet.image.load(path)
