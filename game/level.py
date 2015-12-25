@@ -2,6 +2,7 @@ import os
 import pyglet
 
 import man
+# import geometry
 
 TOP = "TOP"
 LEFT = "LEFT"
@@ -51,7 +52,11 @@ class Level(object):
             return r > 210 and g > 210 and b > 210
             
         def is_green(r, g, b):
-            return r < 100 and g > 210 and b < 100
+            return r < 100 and g > 180 and b < 100
+        
+        print "HERE"
+        man.get_mans_from_image(self.image)
+        print "THERE"
         
         # Process image to find landing surfaces and start points
         self.checkpoints = []
@@ -79,22 +84,32 @@ class Level(object):
             raise RuntimeError("No checkpoints.")
         
         # Sort out mans
+        mans = man.get_mans_from_image(self.image)
         self.mans = {}
-        for man_loc in man_locs:
-            # Already one nearby?
-            for test_loc in self.mans.keys():
-                dist = ((man_loc[0] - test_loc[0]) ** 2 +
-                        (man_loc[1] - test_loc[1]) ** 2) ** 0.5
-                if dist < 15:
-                    break
-            else:
-                this_man = man.Man()
-                this_man.pos = man_loc
-                if self.bg_col == (255, 255, 255):
-                    this_man.color = man.BLACK
-                else:
-                    this_man.color = man.WHITE
-                self.mans[man_loc] = this_man
+        for i, the_man in enumerate(mans):
+            self.mans[i] = man
+        
+        # self.mans = {}
+        # man_points = [geometry.Point(*loc) for loc in man_locs]
+        # man_rects = geometry.get_rects_containing_points(man_points, threshold=8)
+        
+        # man_locs = []
+        # for man_rect in man_rects:
+        #     center = man_rect.center
+        #     loc = int(center.x), int(center.y)
+        #     man_locs.append(loc)
+        # print man_locs
+        
+        # # print man_rects
+        
+        # for man_loc in man_locs:
+        #     this_man = man.Man()
+        #     this_man.pos = man_loc
+        #     if self.bg_col == (255, 255, 255):
+        #         this_man.color = man.BLACK
+        #     else:
+        #         this_man.color = man.WHITE
+        #     self.mans[man_loc] = this_man
         
         # Get rid of rescued ones
         for key in rescued_mans:
@@ -159,3 +174,4 @@ class Level(object):
         self.bg_sprite.draw()
         for this_man in self.mans.values():
             this_man.draw()
+
