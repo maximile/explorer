@@ -1,5 +1,6 @@
 import sys
 import colorsys
+import functools
 
 TRANSPARENT = 0
 BLACK = 1
@@ -40,6 +41,50 @@ for col, rgba in RGBA_FOR_COLORS.items():
     h, s, v = colorsys.rgb_to_hsv(*rgb)
     HSV_FOR_COLORS[col] = h, s, v
 
+
+def rgb_to_lab(r, g, b):
+    rgb = r, g, b
+    new_rgb = []
+    for v in rgb:
+        v /= 255.0
+        if v > 0.04045:
+            v = ((v + 0.055) / 1.055) ** 2.4
+        else:
+            v = v / 12.92
+        v *= 100
+        new_rgb.append(v)
+    r, g, b = new_rgb
+    x = r * 0.4124 + g * 0.3576 + b * 0.1805
+    y = r * 0.2126 + g * 0.7152 + b * 0.0722
+    z = r * 0.0193 + g * 0.1192 + b * 0.9505
+
+    x /= 95.047
+    y /= 100.000
+    z /= 108.883
+    xyz = x, y, z
+    new_xyz = []
+    for v in xyz:
+        if v > 0.008856:
+            v = v ** (1.0 / 3.0)
+        else:
+            v = 7.787 * v + 16.0 / 116.0
+        new_xyz.append(v)
+    x, y, z = new_xyz
+    l = (116.0 * y) - 16.0
+    a = 500.0 * (x - y)
+    b = 200 * (y - z)
+    return l, a, b
+
+    
+LAB_FOR_COLORS = {}
+for col, rgba in RGBA_FOR_COLORS.items():
+    if rgba[-1] < 127:
+        continue
+    rgb = rgba[:3]
+    l, a, b = rgb_to_lab(*rgb)
+    LAB_FOR_COLORS[col] = l, a, b
+
+
 # TRANSPARENT = 0
 # WHITE = 1
 # BLACK = 2
@@ -63,23 +108,55 @@ for col, rgba in RGBA_FOR_COLORS.items():
 #     TRANSPARENT: (0, 0, 0, 0)
 # }
 
+# def get_color_for_rgba(r, g, b, a):
+#     if a < 127:
+#         return TRANSPARENT
+#     h, s, v = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
+    
+#     min_diff = sys.float_info.max
+#     for col, hsv in HSV_FOR_COLORS.items():
+#         h2, s2, v2 = hsv
+#         hdiff = h2 - h
+#         sdiff = s2 - s
+#         vdiff = v2 - v
+#         diff = hdiff * hdiff * 4.7 + sdiff * sdiff * 2.9 + vdiff * vdiff * 2.3
+#         if diff < min_diff:
+#             min_diff = diff
+#             min_diff_col = col
+#     return min_diff_col
+
+
+_col_cache = {}
+
+
 def get_color_for_rgba(r, g, b, a):
+    cache_key = r, g, b, a
+    global _col_cache
+    if cache_key in _col_cache:
+        return _col_cache[cache_key]
+    
     if a < 127:
+        _col_cache[cache_key] = TRANSPARENT
         return TRANSPARENT
-    h, s, v = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
+    lab = rgb_to_lab(r, g, b)
     
     min_diff = sys.float_info.max
-    for col, hsv in HSV_FOR_COLORS.items():
-        h2, s2, v2 = hsv
-        diff = (h - h2) ** 2 + (s - s2) ** 2 + (v - v2) ** 2
+    for col, lab2 in LAB_FOR_COLORS.items():
+        diff = 0.0
+        for c1, c2 in zip(lab, lab2):
+            diff += (c1 - c2) * (c1 - c2)
         if diff < min_diff:
             min_diff = diff
             min_diff_col = col
+    _col_cache[cache_key] = min_diff_col
     return min_diff_col
+
 
 
 def get_rgba(col):
     return RGBA_FOR_COLORS[col]
+
+
     
 #     def _get_
     

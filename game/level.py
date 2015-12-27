@@ -2,6 +2,7 @@ import os
 import pyglet
 
 import man
+import pixmap
 # import geometry
 
 TOP = "TOP"
@@ -54,10 +55,6 @@ class Level(object):
         def is_green(r, g, b):
             return r < 100 and g > 180 and b < 100
         
-        print "HERE"
-        man.get_mans_from_image(self.image)
-        print "THERE"
-        
         # Process image to find landing surfaces and start points
         self.checkpoints = []
         man_locs = []
@@ -84,10 +81,15 @@ class Level(object):
             raise RuntimeError("No checkpoints.")
         
         # Sort out mans
-        mans = man.get_mans_from_image(self.image)
-        self.mans = {}
-        for i, the_man in enumerate(mans):
-            self.mans[i] = man
+        # print "HERE"
+        pix_map = pixmap.Pixmap.from_pyglet_image(self.image)
+        # man.get_mans_from_pixmap(pix_map)
+        # print "THERE"
+
+        # mans = man.get_mans_from_pixmap(pix_map)
+        self.mans = man.get_mans_from_pixmap(pix_map)
+        # for i, the_man in enumerate(mans):
+        #     self.mans[i] = the_man
         
         # self.mans = {}
         # man_points = [geometry.Point(*loc) for loc in man_locs]
@@ -144,17 +146,17 @@ class Level(object):
         else:
             self._collision_mask = tuple([ord(d) < 127 for d in data])
         
-        # Floor mans
-        for key, the_man in self.mans.items():
-            while True:
-                # Sample below
-                x = the_man.pos[0] + the_man.width // 2
-                y = the_man.pos[1] - 1
-                if self._collision_mask[self.width * y + x]:
-                    break
-                the_man.pos = the_man.pos[0], the_man.pos[1] - 1
-                if the_man.pos < 0:
-                    raise RuntimeError("Too low!")
+        # # Floor mans
+        # for key, the_man in self.mans.items():
+        #     while True:
+        #         # Sample below
+        #         x = the_man.pos[0] + the_man.width // 2
+        #         y = the_man.pos[1] - 1
+        #         if self._collision_mask[self.width * y + x]:
+        #             break
+        #         the_man.pos = the_man.pos[0], the_man.pos[1] - 1
+        #         if the_man.pos < 0:
+        #             raise RuntimeError("Too low!")
 
     def nearest_checkpoint(self, x, y):
         smallest_dist = 1000000.0
@@ -174,4 +176,3 @@ class Level(object):
         self.bg_sprite.draw()
         for this_man in self.mans.values():
             this_man.draw()
-
