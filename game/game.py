@@ -2,7 +2,6 @@ from __future__ import division
 import os
 import pyglet
 
-import man
 import level
 import player
 
@@ -16,8 +15,7 @@ class Game(object):
     def __init__(self):
         self.level = level.Level(0, 0)
         self.player = player.Player()
-        self.player.pos = self.level.nearest_checkpoint(self.level.width // 2,
-                                                        self.level.height // 2)
+        self.player.pos = 100, 100
         self.rescue_sound = pyglet.media.load("sounds/rescue.wav", streaming=False)
         self.rescued_mans = {}
         self.fade_amount = 1.0
@@ -73,54 +71,45 @@ class Game(object):
         
         # Move mans
         for the_man in self.level.mans.values():
-            if the_man.direction == man.LEFT:
-                x = int(the_man.pos[0])
-                y = int(the_man.pos[1] - 1)
-                if x < 0 or not self.level.collision_mask[y * self.level.width + x]:
-                    the_man.direction = man.RIGHT
-            elif the_man.direction == man.RIGHT:
-                x = int(the_man.pos[0] + the_man.width)
-                y = int(the_man.pos[1] - 1)
-                if x > self.level.width or not self.level.collision_mask[y * self.level.width + x]:
-                    the_man.direction = man.LEFT
-            man_speed = 10.0
-            if the_man.direction == man.LEFT:
-                the_man.pos = the_man.pos[0] - man_speed * dt, the_man.pos[1]
-            else:
-                the_man.pos = the_man.pos[0] + man_speed * dt, the_man.pos[1]
+            the_man.update(self.level.collision_map, dt)
 
         # Check for collision
-        level_mask = self.level.collision_mask
-        player_mask = self.player.collision_mask
+        level_map = self.level.collision_map
+        player_map = self.player.collision_map
         
-        # Number of bottom-row collisions required for a safe landing
-        bottom_row = player_mask[:self.player.width]
-        required_bottom_row_collisions = bottom_row.count(True)
-        
-        bottom_row_collisions = 0
-        other_collisions = 0
-        for y in xrange(self.player.height):
-            for x in xrange(self.player.width):
-                player_val = player_mask[y * self.player.width + x]
-                level_x = x + int(self.player.pos[0])
-                level_y = y + int(self.player.pos[1])
-                if level_x < 0 or level_x >= self.level.width:
-                    continue
-                if level_y < 0 or level_y >= self.level.height:
-                    continue
-                level_val = level_mask[level_y * self.level.width + level_x]
-                if level_val and player_val:
-                    if y == 0:
-                        bottom_row_collisions += 1
-                    else:
-                        other_collisions += 1
-        
-        if (bottom_row_collisions == required_bottom_row_collisions and
-                not other_collisions and self.player.can_land()):
-            self.player.land()
-        elif other_collisions or bottom_row_collisions:
+        player_pos = (int(round(self.player.pos[0])),
+                      int(round(self.player.pos[1])))
+        if level_map.collision(player_map, player_pos):
             self.player.crash()
-            self.player.pos = self.level.nearest_checkpoint(*self.player.pos)
+        
+        # # Number of bottom-row collisions required for a safe landing
+        # bottom_row = player_mask[:self.player.width]
+        # required_bottom_row_collisions = bottom_row.count(True)
+        
+        # bottom_row_collisions = 0
+        # other_collisions = 0
+        # for y in xrange(self.player.height):
+        #     for x in xrange(self.player.width):
+        #         player_val = player_mask[y * self.player.width + x]
+        #         level_x = x + int(self.player.pos[0])
+        #         level_y = y + int(self.player.pos[1])
+        #         if level_x < 0 or level_x >= self.level.width:
+        #             continue
+        #         if level_y < 0 or level_y >= self.level.height:
+        #             continue
+        #         level_val = level_mask[level_y * self.level.width + level_x]
+        #         if level_val and player_val:
+        #             if y == 0:
+        #                 bottom_row_collisions += 1
+        #             else:
+        #                 other_collisions += 1
+        
+        # if (bottom_row_collisions == required_bottom_row_collisions and
+        #         not other_collisions and self.player.can_land()):
+        #     self.player.land()
+        # elif other_collisions or bottom_row_collisions:
+        #     self.player.crash()
+        #     self.player.pos = self.level.nearest_checkpoint(*self.player.pos)
         
         # Mans to rescue?
         for key, the_man in self.level.mans.items():

@@ -1,5 +1,8 @@
-import ctypes
+import copy
 import pyglet
+
+import color
+import pixmap
 
 LEFT = -1, 0
 RIGHT = 1, 0
@@ -10,38 +13,57 @@ FACING_LEFT = "FACING_LEFT"
 FACING_RIGHT = "FACING_RIGHT"
 GEAR_DOWN = "GEAR_DOWN"
 GEAR_UP = "GEAR_UP"
-BLACK = "BLACK"
-WHITE = "WHITE"
+
 
 class Player(object):
     def __init__(self):
-        # Images and collision masks:
-        image_paths_for_states = {
-            (FACING_RIGHT, GEAR_UP, BLACK): "images/car_right_up.png",
-            (FACING_RIGHT, GEAR_DOWN, BLACK): "images/car_right_down.png",
-            (FACING_LEFT, GEAR_UP, BLACK): "images/car_left_up.png",
-            (FACING_LEFT, GEAR_DOWN, BLACK): "images/car_left_down.png",
-            (FACING_RIGHT, GEAR_UP, WHITE): "images/car_right_up_white.png",
-            (FACING_RIGHT, GEAR_DOWN, WHITE): "images/car_right_down_white.png",
-            (FACING_LEFT, GEAR_UP, WHITE): "images/car_left_up_white.png",
-            (FACING_LEFT, GEAR_DOWN, WHITE): "images/car_left_down_white.png"
-        }
+        car_path = "images/car.png"
+        car_image = pyglet.image.load(car_path)
+        car_pixmap = pixmap.Pixmap.from_pyglet_image(car_image)
+        pixmap_gear_down = copy.deepcopy(car_pixmap)
+        pixmap_gear_down.remove_colors(keep=[color.BLACK, color.TRANSPARENT])
+        pixmap_gear_up = copy.deepcopy(car_pixmap)
+        pixmap_gear_down.remove_colors(
+            keep=[color.BLACK, color.GREEN, color.TRANSPARENT])
+        pixmap_gear_down.replace_colors({color.GREEN: color.BLACK})
+        
+        states = [(FACING_RIGHT, GEAR_UP, color.BLACK),
+                  (FACING_RIGHT, GEAR_DOWN, color.BLACK),
+                  (FACING_LEFT, GEAR_UP, color.BLACK),
+                  (FACING_LEFT, GEAR_DOWN, color.BLACK),
+                  (FACING_RIGHT, GEAR_UP, color.WHITE),
+                  (FACING_RIGHT, GEAR_DOWN, color.WHITE),
+                  (FACING_LEFT, GEAR_UP, color.WHITE),
+                  (FACING_LEFT, GEAR_DOWN, color.WHITE)]
+        
+        pixmaps_for_states = {}
+        for facing, gear, col in states:
+            if gear == GEAR_DOWN:
+                pix_map = copy.deepcopy(pixmap_gear_down)
+            else:
+                pix_map = copy.deepcopy(pixmap_gear_up)
+            if facing == FACING_LEFT:
+                pix_map.flip()
+            if col == color.WHITE:
+                pix_map.invert()
+            pixmaps_for_states[facing, gear, col] = pix_map
+        
+        # # Get thruster images
+        # thrusters_pixmap = pix_map
         
         self._sprites = {}
-        self._collision_masks = {}
+        self._collision_maps = {}
         self.width = None
         self.height = None
         self.landed = False
-        self.color = BLACK
-        for state, image_path in image_paths_for_states.items():
+        self.color = color.BLACK
+        for state, pix_map in pixmaps_for_states.items():
             # Sprite:
-            image = pyglet.image.load(image_path)
+            image = pix_map.to_image()
             self._sprites[state] = pyglet.sprite.Sprite(image)
             
             # Collision data
-            alpha_data = image.get_image_data().get_data("A", image.width)
-            mask = tuple([ord(d) > 127 for d in alpha_data])
-            self._collision_masks[state] = mask
+            self._collision_maps[state] = pix_map
             
             # Check dimensions match
             if self.width is None:
@@ -52,6 +74,45 @@ class Player(object):
                 self.height = image.height
             elif not self.height == image.height:
                 raise ValueError("Widths don't match.")
+        
+        # Get rects containing thruster images
+        thrusters_pixmap = copy.deepcopy(car_pixmap)
+        thrusters_pixmap.remove_colors(keep=[color.RED, color.TRANSPARENT])
+        thrusters_pixmap.replace_colors({color.RED: color.BLACK})
+        rects = thrusters_pixmap.get_sub_rects(color.BLACK, threshold=2)
+        if not len(rects) == 4:
+            raise RuntimeError("Expected four red sprites in %s" % car_path)
+        
+        # Get one for each direction
+        thruster_rects = {LEFT: rects[0], RIGHT: rects[0],
+                          UP: rects[0], DOWN: rects[0]}
+        for rect in rects:
+            if rect.center[0] < thruster_rects[LEFT].center[0]:
+                thruster_rects[LEFT] = rect
+            if rect.center[0] > thruster_rects[RIGHT].center[0]:
+                thruster_rects[RIGHT] = rect
+            if rect.center[1] < thruster_rects[UP].center[1]:
+                thruster_rects[UP] = rect
+            if rect.center[1] > thruster_rects[DOWN].center[1]:
+                thruster_rects[DOWN] = rect
+                
+        self._thruster_sprites = {}
+        for direction, rect in thruster_rects.items():
+            pix_map = copy.deepcopy(thrusters_pixmap)
+            pix_map.fill_rect(rect.x, rect.y, rect.width, rect.height,
+                              color.TRANSPARENT, invert=True)
+            self._thruster_sprites[direction, FACING_RIGHT, color.BLACK] = (
+                pyglet.sprite.Sprite(pix_map.to_image()))
+            pix_map.flip()
+            self._thruster_sprites[direction, FACING_LEFT, color.BLACK] = (
+                pyglet.sprite.Sprite(pix_map.to_image()))
+            pix_map.flip()
+            pix_map.replace_colors({color.BLACK: color.WHITE})
+            self._thruster_sprites[direction, FACING_RIGHT, color.WHITE] = (
+                pyglet.sprite.Sprite(pix_map.to_image()))
+            pix_map.flip()
+            self._thruster_sprites[direction, FACING_LEFT, color.WHITE] = (
+                pyglet.sprite.Sprite(pix_map.to_image()))
         
         self.facing = FACING_RIGHT
         self.vel = 0.0, 0.0
@@ -64,19 +125,19 @@ class Player(object):
         self.land_sound = pyglet.media.load("sounds/land.wav", streaming=False)
         self.crash_sound = pyglet.media.load("sounds/crash.wav", streaming=False)
         
-        # Thruster sprites
-        self.thruster_sprites = {}
-        paths_for_cols = {WHITE: "images/thrusters_white.png",
-                          BLACK: "images/thrusters.png"}
-        for color, path in paths_for_cols.items():
-            self.thruster_sprites[color] = {}
-            thruster_img = pyglet.image.load(path)
-            thruster_grid = pyglet.image.ImageGrid(thruster_img, 2, 4)
-            cols_dirs = LEFT, UP, RIGHT, DOWN
-            for col, direction in enumerate(cols_dirs):
-                frames = thruster_grid[0, col], thruster_grid[1, col]
-                anim = pyglet.image.Animation.from_image_sequence(frames, 0.3, True)
-                self.thruster_sprites[color][direction] = pyglet.sprite.Sprite(anim)
+        # # Thruster sprites
+        # self.thruster_sprites = {}
+        # paths_for_cols = {color.WHITE: "images/thrusters_white.png",
+        #                   color.BLACK: "images/thrusters.png"}
+        # for col, path in paths_for_cols.items():
+        #     self.thruster_sprites[col] = {}
+        #     thruster_img = pyglet.image.load(path)
+        #     thruster_grid = pyglet.image.ImageGrid(thruster_img, 2, 4)
+        #     cols_dirs = LEFT, UP, RIGHT, DOWN
+        #     for column, direction in enumerate(cols_dirs):
+        #         frames = thruster_grid[0, column], thruster_grid[1, column]
+        #         anim = pyglet.image.Animation.from_image_sequence(frames, 0.3, True)
+        #         self.thruster_sprites[col][direction] = pyglet.sprite.Sprite(anim)
     
     def can_land(self):
         return self.gear_state == GEAR_DOWN
@@ -107,9 +168,9 @@ class Player(object):
             self.gear_state = GEAR_DOWN
     
     @property
-    def collision_mask(self):
+    def collision_map(self):
         state = self.facing, self.gear_state, self.color
-        return self._collision_masks[state]
+        return self._collision_maps[state]
     
     def update(self, dt):
         if self.landed:
@@ -165,15 +226,10 @@ class Player(object):
         sprite.y = self.pos[1]
         sprite.draw()
         
-        offsets = {UP: (self.width / 2 - 5, -14),
-                   DOWN: (self.width / 2 - 5, 12),
-                   LEFT: (27, self.height // 2 - 8),
-                   RIGHT: (-10, self.height // 2 - 8)}
         for direction, value in self.inputs.items():
             if not value:
                 continue
-            sprite = self.thruster_sprites[self.color][direction]
-            offset = offsets.get(direction, (20, 20))
-            sprite.x = self.pos[0] + offset[0]
-            sprite.y = self.pos[1] + offset[1]
+            sprite = self._thruster_sprites[direction, self.facing, self.color]
+            sprite.x = self.pos[0]
+            sprite.y = self.pos[1]
             sprite.draw()

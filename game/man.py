@@ -18,6 +18,7 @@ class Man(object):
             img_map.invert()
             image = img_map.to_image()
         
+        self.speed = 10.0
         self.height = image.height
         self.width = image.width // 2
         seq = pyglet.image.ImageGrid(image, 1, 2)
@@ -28,7 +29,22 @@ class Man(object):
         self.pos = 0, 0
         self.direction = random.choice([LEFT, RIGHT])
     
-    def update(self, game, dt):
+    def update(self, collision_map, dt):
+        if self.direction == LEFT:
+            x = int(self.pos[0])
+            y = int(self.pos[1] - 1)
+            if x < 0 or collision_map[x, y] == self.color:
+                self.direction = RIGHT
+        elif self.direction == RIGHT:
+            x = int(self.pos[0] + self.width)
+            y = int(self.pos[1] - 1)
+            if x > collision_map.width or collision_map[x, y] == self.color:
+                self.direction = LEFT
+        if self.direction == LEFT:
+            self.pos = self.pos[0] - self.speed * dt, self.pos[1]
+        else:
+            self.pos = self.pos[0] + self.speed * dt, self.pos[1]
+
         
     
     def draw(self):

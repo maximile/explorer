@@ -17,8 +17,8 @@ class GameWindow(pyglet.window.Window):
         self.game.key_released(symbol, modifiers)
     
     def on_draw(self):
-        self.fbo = fbo.FBO(self.game.level.image.width,
-                           self.game.level.image.height)
+        self.fbo = fbo.FBO(self.game.level.width,
+                           self.game.level.height)
         self.fbo.attach()
         pyglet.gl.glColor3f(1.0, 0.0, 0.0)
         # self.clear()
